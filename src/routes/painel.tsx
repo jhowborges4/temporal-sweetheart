@@ -18,7 +18,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { brl, diasUteisDaSemana, diasUteisDoMes, intervaloSemana, iso } from "@/lib/metas";
+import {
+  SALARIO_BASE,
+  brl,
+  diasUteisDaSemana,
+  diasUteisDoMes,
+  intervaloSemana,
+  iso,
+} from "@/lib/metas";
 import {
   CONFIG_PADRAO,
   useConfig,
@@ -130,6 +137,9 @@ function Painel() {
   const metaDia = diasMes > 0 ? proxima / diasMes : 0;
   const metaSemana = metaDia * diasUteisDaSemana(hoje);
   const comissao = totalMes * comissaoPct;
+  const primeiraMeta = metas[0] ?? 0;
+  const metaMinimaAtingida = primeiraMeta > 0 && totalMes >= primeiraMeta;
+  const salarioAtual = metaMinimaAtingida ? comissao : SALARIO_BASE;
 
   // Ritmo necessário: dias úteis restantes a partir de hoje (ou do mês todo, se futuro)
   const diasRestantes = useMemo(() => {
@@ -246,17 +256,27 @@ function Painel() {
   }, [pctSim, comissaoPct]);
 
   const simulacao = useMemo(() => {
-    const linhas = dadosMensais.map((m) => ({
-      mes: m.mes,
-      total: m.total,
-      atual: m.total * comissaoPct,
-      sim: m.total * pctSimNum,
-      dif: m.total * (pctSimNum - comissaoPct),
-    }));
+    const linhas = dadosMensais.map((m) => {
+      const atingiuMeta = primeiraMeta > 0 && m.total >= primeiraMeta;
+      const comissaoAtual = m.total * comissaoPct;
+      const comissaoSimulada = m.total * pctSimNum;
+      const atual = atingiuMeta ? comissaoAtual : SALARIO_BASE;
+      const sim = atingiuMeta ? comissaoSimulada : SALARIO_BASE;
+      return {
+        mes: m.mes,
+        total: m.total,
+        atingiuMeta,
+        comissaoAtual,
+        comissaoSimulada,
+        atual,
+        sim,
+        dif: sim - atual,
+      };
+    });
     const totalAtual = linhas.reduce((s, l) => s + l.atual, 0);
     const totalSim = linhas.reduce((s, l) => s + l.sim, 0);
     return { linhas, totalAtual, totalSim, diferenca: totalSim - totalAtual };
-  }, [dadosMensais, comissaoPct, pctSimNum]);
+  }, [dadosMensais, comissaoPct, pctSimNum, primeiraMeta]);
 
 
   function navegarMes(delta: number) {

@@ -1,5 +1,6 @@
 export const METAS = [174000, 200000, 220000, 250000];
 export const COMISSAO = 0.015;
+export const SALARIO_BASE = 2200;
 
 export const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
