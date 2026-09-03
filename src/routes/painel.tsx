@@ -549,14 +549,20 @@ function Painel() {
           <Card className="border-primary/40 bg-card/60">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-bold tracking-widest text-primary uppercase">
-                Comissão ({(comissaoPct * 100).toFixed(2).replace(".", ",")}%)
+                Salário atual
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-primary">{brl(comissao)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {ehMesAtual ? `Projeção do mês: ${brl(projecao)}` : "Valor final do mês"}
-              </p>
+              <p className="text-2xl font-bold text-primary">{brl(salarioAtual)}</p>
+              {metaMinimaAtingida ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {(comissaoPct * 100).toFixed(2).replace(".", ",")}% sobre {brl(totalMes)} em vendas
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Salário-base priorizado · comissão simulada: {brl(comissao)}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -966,13 +972,21 @@ function Painel() {
                 <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
                   Mês atual ({nomeMes(mesRef)})
                 </p>
-                <p className="text-xl font-bold">{brl(totalMes * pctSimNum)}</p>
+                <p className="text-xl font-bold">
+                  {brl(metaMinimaAtingida ? totalMes * pctSimNum : SALARIO_BASE)}
+                </p>
                 <p
                   className={`text-xs ${totalMes * pctSimNum >= comissao ? "text-primary" : "text-destructive"}`}
                 >
-                  {totalMes * pctSimNum >= comissao ? "+" : "−"}
-                  {brl(Math.abs(totalMes * pctSimNum - comissao))} vs {brl(comissao)} atual
+                  {metaMinimaAtingida
+                    ? `${totalMes * pctSimNum >= comissao ? "+" : "−"}${brl(Math.abs(totalMes * pctSimNum - comissao))} vs ${brl(comissao)} atual`
+                    : `Comissão simulada: ${brl(totalMes * pctSimNum)}`}
                 </p>
+                {!metaMinimaAtingida && (
+                  <p className="mt-2 text-xs font-semibold text-primary">
+                    Abaixo da meta de {brl(primeiraMeta)}: o salário-base de {brl(SALARIO_BASE)} será priorizado.
+                  </p>
+                )}
               </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
@@ -1009,10 +1023,10 @@ function Painel() {
                       <th className="py-2">Mês</th>
                       <th className="py-2 text-right">Vendas</th>
                       <th className="py-2 text-right">
-                        Comissão {(comissaoPct * 100).toFixed(2).replace(".", ",")}%
+                         Salário atual
                       </th>
                       <th className="py-2 text-right">
-                        Simulada {(pctSimNum * 100).toFixed(2).replace(".", ",")}%
+                         Salário simulado
                       </th>
                       <th className="py-2 text-right">Diferença</th>
                     </tr>
@@ -1022,8 +1036,22 @@ function Painel() {
                       <tr key={l.mes}>
                         <td className="py-2 font-sans">{l.mes}</td>
                         <td className="py-2 text-right">{brl(l.total)}</td>
-                        <td className="py-2 text-right">{brl(l.atual)}</td>
-                        <td className="py-2 text-right font-semibold">{brl(l.sim)}</td>
+                         <td className="py-2 text-right">
+                           {brl(l.atual)}
+                           {!l.atingiuMeta && (
+                             <span className="block font-sans text-[10px] text-muted-foreground">
+                               Base priorizado
+                             </span>
+                           )}
+                         </td>
+                         <td className="py-2 text-right font-semibold">
+                           {brl(l.sim)}
+                           {!l.atingiuMeta && (
+                             <span className="block font-sans text-[10px] font-normal text-muted-foreground">
+                               Comissão: {brl(l.comissaoSimulada)}
+                             </span>
+                           )}
+                         </td>
                         <td
                           className={`py-2 text-right ${l.dif >= 0 ? "text-primary" : "text-destructive"}`}
                         >
