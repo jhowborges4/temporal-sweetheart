@@ -35,9 +35,11 @@ function Entrada() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <Card className="w-full max-w-md border-border/60">
+      <Card className="w-full max-w-md bg-card/60">
         <CardHeader>
-          <CardTitle className="text-2xl">Controle de Vendas</CardTitle>
+          <CardTitle className="text-2xl">
+            Controle de Vendas <span className="text-primary">.</span>
+          </CardTitle>
           <CardDescription>Materiais de construção · Jaguariúna</CardDescription>
         </CardHeader>
         <CardContent>
