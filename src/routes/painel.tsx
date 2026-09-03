@@ -19,7 +19,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { brl, diasUteisDaSemana, diasUteisDoMes, intervaloSemana, iso } from "@/lib/metas";
-import { CONFIG_PADRAO, useConfig, useNome, useVendas, type Venda } from "@/lib/store";
+import {
+  CONFIG_PADRAO,
+  useConfig,
+  useLocalState,
+  useNome,
+  useVendas,
+  type Venda,
+} from "@/lib/store";
+
 import { exportarCSV, exportarPDF, type Resumo } from "@/lib/exportar";
 
 export const Route = createFileRoute("/painel")({
