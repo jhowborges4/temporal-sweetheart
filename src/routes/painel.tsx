@@ -245,6 +245,10 @@ function Painel() {
     toast.success("Venda registrada! Comissão recalculada.");
   }
 
+  // snapshot simples para o "desfazer"
+  const vendasRef = useRef(vendas);
+  vendasRef.current = vendas;
+
   function excluir(id: string) {
     const removida = vendas.find((v) => v.id === id);
     if (!removida) return;
@@ -252,16 +256,9 @@ function Painel() {
     toast.success("Registro removido. Comissão recalculada.", {
       action: {
         label: "Desfazer",
-        onClick: () => setVendas([...useVendasSnapshot(), removida]),
+        onClick: () => setVendas([...vendasRef.current, removida]),
       },
     });
-  }
-
-  // snapshot simples para o "desfazer"
-  const vendasRef = useRef(vendas);
-  vendasRef.current = vendas;
-  function useVendasSnapshot() {
-    return vendasRef.current;
   }
 
   function exportarBackup() {
