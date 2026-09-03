@@ -371,12 +371,27 @@ function Painel() {
             <Button variant="outline" size="sm" onClick={() => exportarPDF(montarResumo())}>
               PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={exportarBackup}>
+            <Button variant="outline" size="sm" onClick={() => baixarBackup()}>
               Backup
             </Button>
             <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}>
               Importar
             </Button>
+            <Button
+              variant={autoBackup.ativo ? "default" : "outline"}
+              size="sm"
+              onClick={() =>
+                setAutoBackup({ ...autoBackup, ativo: !autoBackup.ativo })
+              }
+              title={
+                autoBackup.ultimo
+                  ? `Último backup automático: ${autoBackup.ultimo.split("-").reverse().join("/")}`
+                  : "Nenhum backup automático ainda"
+              }
+            >
+              Auto-backup {autoBackup.ativo ? "ON" : "OFF"}
+            </Button>
+
             <input
               ref={importRef}
               type="file"
