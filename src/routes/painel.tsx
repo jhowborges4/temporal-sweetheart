@@ -239,6 +239,26 @@ function Painel() {
   const projecao =
     ehMesAtual && uteisPassados > 0 ? (totalMes / uteisPassados) * diasMes : totalMes;
 
+  // Simulador de percentual de comissão
+  const pctSimNum = useMemo(() => {
+    const n = Number(pctSim.replace(",", "."));
+    return Number.isFinite(n) && pctSim.trim() !== "" ? Math.max(0, n) / 100 : comissaoPct;
+  }, [pctSim, comissaoPct]);
+
+  const simulacao = useMemo(() => {
+    const linhas = dadosMensais.map((m) => ({
+      mes: m.mes,
+      total: m.total,
+      atual: m.total * comissaoPct,
+      sim: m.total * pctSimNum,
+      dif: m.total * (pctSimNum - comissaoPct),
+    }));
+    const totalAtual = linhas.reduce((s, l) => s + l.atual, 0);
+    const totalSim = linhas.reduce((s, l) => s + l.sim, 0);
+    return { linhas, totalAtual, totalSim, diferenca: totalSim - totalAtual };
+  }, [dadosMensais, comissaoPct, pctSimNum]);
+
+
   function navegarMes(delta: number) {
     setMesRef(new Date(ano, mes + delta, 1));
   }
