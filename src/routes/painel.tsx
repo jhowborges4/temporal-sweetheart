@@ -873,7 +873,134 @@ function Painel() {
           </CardContent>
         </Card>
 
+        {/* Simulador de comissão */}
+        <Card className="border-primary/30 bg-card/60">
+          <CardHeader>
+            <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
+              Simulador de comissão
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="w-40">
+                <Label className="text-xs">Percentual simulado (%)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={pctSim}
+                  placeholder={String(comissaoPct * 100).replace(".", ",")}
+                  onChange={(e) => setPctSim(e.target.value)}
+                />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={10}
+                step={0.1}
+                value={pctSimNum * 100}
+                onChange={(e) => setPctSim(e.target.value.replace(".", ","))}
+                className="h-2 min-w-48 flex-1 cursor-pointer accent-[var(--primary)]"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPctSim("")}
+              >
+                Zerar simulação
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setConfig({ ...config, comissao: pctSimNum });
+                  setPctSim("");
+                  toast.success(
+                    `Comissão atualizada para ${(pctSimNum * 100).toFixed(2).replace(".", ",")}%`,
+                  );
+                }}
+              >
+                Aplicar de verdade
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Mês atual ({nomeMes(mesRef)})
+                </p>
+                <p className="text-xl font-bold">{brl(totalMes * pctSimNum)}</p>
+                <p
+                  className={`text-xs ${totalMes * pctSimNum >= comissao ? "text-primary" : "text-destructive"}`}
+                >
+                  {totalMes * pctSimNum >= comissao ? "+" : "−"}
+                  {brl(Math.abs(totalMes * pctSimNum - comissao))} vs {brl(comissao)} atual
+                </p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Total simulado (12 meses)
+                </p>
+                <p className="text-xl font-bold">{brl(simulacao.totalSim)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Atual: {brl(simulacao.totalAtual)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Diferença acumulada
+                </p>
+                <p
+                  className={`text-xl font-bold ${simulacao.diferenca >= 0 ? "text-primary" : "text-destructive"}`}
+                >
+                  {simulacao.diferenca >= 0 ? "+" : "−"}
+                  {brl(Math.abs(simulacao.diferenca))}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Em {(pctSimNum * 100).toFixed(2).replace(".", ",")}% sobre as vendas
+                </p>
+              </div>
+            </div>
+
+            {simulacao.linhas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem meses registrados ainda.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] tracking-widest text-muted-foreground uppercase">
+                      <th className="py-2">Mês</th>
+                      <th className="py-2 text-right">Vendas</th>
+                      <th className="py-2 text-right">
+                        Comissão {(comissaoPct * 100).toFixed(2).replace(".", ",")}%
+                      </th>
+                      <th className="py-2 text-right">
+                        Simulada {(pctSimNum * 100).toFixed(2).replace(".", ",")}%
+                      </th>
+                      <th className="py-2 text-right">Diferença</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border font-mono">
+                    {simulacao.linhas.map((l) => (
+                      <tr key={l.mes}>
+                        <td className="py-2 font-sans">{l.mes}</td>
+                        <td className="py-2 text-right">{brl(l.total)}</td>
+                        <td className="py-2 text-right">{brl(l.atual)}</td>
+                        <td className="py-2 text-right font-semibold">{brl(l.sim)}</td>
+                        <td
+                          className={`py-2 text-right ${l.dif >= 0 ? "text-primary" : "text-destructive"}`}
+                        >
+                          {l.dif >= 0 ? "+" : "−"}
+                          {brl(Math.abs(l.dif))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card className="bg-card/60">
+
           <CardHeader>
             <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
               Lançamentos de {nomeMes(mesRef)}
