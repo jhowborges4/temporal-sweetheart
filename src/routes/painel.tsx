@@ -61,6 +61,12 @@ function Painel() {
   const [valor, setValor] = useState("");
   const [rascunho, setRascunho] = useState<{ metas: string[]; comissao: string } | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const [pctSim, setPctSim] = useState("");
+  const [autoBackup, setAutoBackup, autoPronto] = useLocalState<{
+    ativo: boolean;
+    ultimo: string;
+  }>("cv:autobackup", { ativo: true, ultimo: "" });
+
 
   useEffect(() => {
     if (nomePronto && !nome.trim()) navigate({ to: "/" });
