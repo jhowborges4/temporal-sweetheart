@@ -101,7 +101,7 @@ function Painel() {
     .reduce((s, v) => s + v.valor, 0);
   const totalHoje = vendas.find((v) => v.data === iso(hoje))?.valor ?? 0;
 
-  const proxima = METAS.find((m) => totalMes < m) ?? METAS[METAS.length - 1];
+  const proxima = METAS.find((m) => totalMes < m) ?? METAS[METAS.length - 1]!;
   const diasMes = diasUteisDoMes(hoje.getFullYear(), hoje.getMonth());
   const metaDia = proxima / diasMes;
   const metaSemana = metaDia * diasUteisDaSemana(hoje);

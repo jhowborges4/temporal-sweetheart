@@ -48,7 +48,10 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     navigate({ to: "/painel" });
   }
 
@@ -61,8 +64,14 @@ function AuthPage() {
       options: { emailRedirectTo: window.location.origin },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
-    if (data.session) return navigate({ to: "/painel" });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    if (data.session) {
+      navigate({ to: "/painel" });
+      return;
+    }
     toast.success("Conta criada! Confirme o e-mail que enviamos para entrar.");
   }
 
@@ -70,7 +79,10 @@ function AuthPage() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) return toast.error("Não foi possível entrar com Google.");
+    if (result.error) {
+      toast.error("Não foi possível entrar com Google.");
+      return;
+    }
     if (result.redirected) return;
     navigate({ to: "/painel" });
   }
