@@ -275,18 +275,33 @@ function Painel() {
     });
   }
 
-  function exportarBackup() {
-    const blob = new Blob([JSON.stringify({ nome, config, vendas }, null, 2)], {
-      type: "application/json",
-    });
+  function baixarBackup(automatico = false) {
+    const blob = new Blob(
+      [JSON.stringify({ nome, config, vendas, gerado: new Date().toISOString() }, null, 2)],
+      { type: "application/json" },
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `backup-vendas-${iso(hoje)}.json`;
+    a.download = `backup-vendas-${automatico ? "auto-" : ""}${iso(hoje)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Backup baixado!");
+    toast.success(automatico ? "Backup automático do dia salvo!" : "Backup baixado!");
   }
+
+  // Backup automático: uma vez por dia, quando houver dados
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (!autoPronto || autoRef.current) return;
+    if (!autoBackup.ativo || vendas.length === 0) return;
+    const hojeIso = iso(new Date());
+    if (autoBackup.ultimo === hojeIso) return;
+    autoRef.current = true;
+    baixarBackup(true);
+    setAutoBackup({ ativo: true, ultimo: hojeIso });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPronto, autoBackup, vendas]);
+
 
   function importarBackup(arquivo: File | undefined) {
     if (!arquivo) return;
