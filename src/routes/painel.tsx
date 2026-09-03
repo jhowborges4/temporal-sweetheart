@@ -19,7 +19,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { brl, diasUteisDaSemana, diasUteisDoMes, intervaloSemana, iso } from "@/lib/metas";
-import { CONFIG_PADRAO, useConfig, useNome, useVendas, type Venda } from "@/lib/store";
+import {
+  CONFIG_PADRAO,
+  useConfig,
+  useLocalState,
+  useNome,
+  useVendas,
+  type Venda,
+} from "@/lib/store";
+
 import { exportarCSV, exportarPDF, type Resumo } from "@/lib/exportar";
 
 export const Route = createFileRoute("/painel")({
@@ -61,6 +69,12 @@ function Painel() {
   const [valor, setValor] = useState("");
   const [rascunho, setRascunho] = useState<{ metas: string[]; comissao: string } | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const [pctSim, setPctSim] = useState("");
+  const [autoBackup, setAutoBackup, autoPronto] = useLocalState<{
+    ativo: boolean;
+    ultimo: string;
+  }>("cv:autobackup", { ativo: true, ultimo: "" });
+
 
   useEffect(() => {
     if (nomePronto && !nome.trim()) navigate({ to: "/" });
@@ -225,6 +239,26 @@ function Painel() {
   const projecao =
     ehMesAtual && uteisPassados > 0 ? (totalMes / uteisPassados) * diasMes : totalMes;
 
+  // Simulador de percentual de comissão
+  const pctSimNum = useMemo(() => {
+    const n = Number(pctSim.replace(",", "."));
+    return Number.isFinite(n) && pctSim.trim() !== "" ? Math.max(0, n) / 100 : comissaoPct;
+  }, [pctSim, comissaoPct]);
+
+  const simulacao = useMemo(() => {
+    const linhas = dadosMensais.map((m) => ({
+      mes: m.mes,
+      total: m.total,
+      atual: m.total * comissaoPct,
+      sim: m.total * pctSimNum,
+      dif: m.total * (pctSimNum - comissaoPct),
+    }));
+    const totalAtual = linhas.reduce((s, l) => s + l.atual, 0);
+    const totalSim = linhas.reduce((s, l) => s + l.sim, 0);
+    return { linhas, totalAtual, totalSim, diferenca: totalSim - totalAtual };
+  }, [dadosMensais, comissaoPct, pctSimNum]);
+
+
   function navegarMes(delta: number) {
     setMesRef(new Date(ano, mes + delta, 1));
   }
@@ -261,18 +295,33 @@ function Painel() {
     });
   }
 
-  function exportarBackup() {
-    const blob = new Blob([JSON.stringify({ nome, config, vendas }, null, 2)], {
-      type: "application/json",
-    });
+  function baixarBackup(automatico = false) {
+    const blob = new Blob(
+      [JSON.stringify({ nome, config, vendas, gerado: new Date().toISOString() }, null, 2)],
+      { type: "application/json" },
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `backup-vendas-${iso(hoje)}.json`;
+    a.download = `backup-vendas-${automatico ? "auto-" : ""}${iso(hoje)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Backup baixado!");
+    toast.success(automatico ? "Backup automático do dia salvo!" : "Backup baixado!");
   }
+
+  // Backup automático: uma vez por dia, quando houver dados
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (!autoPronto || autoRef.current) return;
+    if (!autoBackup.ativo || vendas.length === 0) return;
+    const hojeIso = iso(new Date());
+    if (autoBackup.ultimo === hojeIso) return;
+    autoRef.current = true;
+    baixarBackup(true);
+    setAutoBackup({ ativo: true, ultimo: hojeIso });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPronto, autoBackup, vendas]);
+
 
   function importarBackup(arquivo: File | undefined) {
     if (!arquivo) return;
@@ -342,12 +391,27 @@ function Painel() {
             <Button variant="outline" size="sm" onClick={() => exportarPDF(montarResumo())}>
               PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={exportarBackup}>
+            <Button variant="outline" size="sm" onClick={() => baixarBackup()}>
               Backup
             </Button>
             <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}>
               Importar
             </Button>
+            <Button
+              variant={autoBackup.ativo ? "default" : "outline"}
+              size="sm"
+              onClick={() =>
+                setAutoBackup({ ...autoBackup, ativo: !autoBackup.ativo })
+              }
+              title={
+                autoBackup.ultimo
+                  ? `Último backup automático: ${autoBackup.ultimo.split("-").reverse().join("/")}`
+                  : "Nenhum backup automático ainda"
+              }
+            >
+              Auto-backup {autoBackup.ativo ? "ON" : "OFF"}
+            </Button>
+
             <input
               ref={importRef}
               type="file"
@@ -829,7 +893,134 @@ function Painel() {
           </CardContent>
         </Card>
 
+        {/* Simulador de comissão */}
+        <Card className="border-primary/30 bg-card/60">
+          <CardHeader>
+            <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
+              Simulador de comissão
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="w-40">
+                <Label className="text-xs">Percentual simulado (%)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={pctSim}
+                  placeholder={String(comissaoPct * 100).replace(".", ",")}
+                  onChange={(e) => setPctSim(e.target.value)}
+                />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={10}
+                step={0.1}
+                value={pctSimNum * 100}
+                onChange={(e) => setPctSim(e.target.value.replace(".", ","))}
+                className="h-2 min-w-48 flex-1 cursor-pointer accent-[var(--primary)]"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPctSim("")}
+              >
+                Zerar simulação
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setConfig({ ...config, comissao: pctSimNum });
+                  setPctSim("");
+                  toast.success(
+                    `Comissão atualizada para ${(pctSimNum * 100).toFixed(2).replace(".", ",")}%`,
+                  );
+                }}
+              >
+                Aplicar de verdade
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Mês atual ({nomeMes(mesRef)})
+                </p>
+                <p className="text-xl font-bold">{brl(totalMes * pctSimNum)}</p>
+                <p
+                  className={`text-xs ${totalMes * pctSimNum >= comissao ? "text-primary" : "text-destructive"}`}
+                >
+                  {totalMes * pctSimNum >= comissao ? "+" : "−"}
+                  {brl(Math.abs(totalMes * pctSimNum - comissao))} vs {brl(comissao)} atual
+                </p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Total simulado (12 meses)
+                </p>
+                <p className="text-xl font-bold">{brl(simulacao.totalSim)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Atual: {brl(simulacao.totalAtual)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Diferença acumulada
+                </p>
+                <p
+                  className={`text-xl font-bold ${simulacao.diferenca >= 0 ? "text-primary" : "text-destructive"}`}
+                >
+                  {simulacao.diferenca >= 0 ? "+" : "−"}
+                  {brl(Math.abs(simulacao.diferenca))}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Em {(pctSimNum * 100).toFixed(2).replace(".", ",")}% sobre as vendas
+                </p>
+              </div>
+            </div>
+
+            {simulacao.linhas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem meses registrados ainda.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] tracking-widest text-muted-foreground uppercase">
+                      <th className="py-2">Mês</th>
+                      <th className="py-2 text-right">Vendas</th>
+                      <th className="py-2 text-right">
+                        Comissão {(comissaoPct * 100).toFixed(2).replace(".", ",")}%
+                      </th>
+                      <th className="py-2 text-right">
+                        Simulada {(pctSimNum * 100).toFixed(2).replace(".", ",")}%
+                      </th>
+                      <th className="py-2 text-right">Diferença</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border font-mono">
+                    {simulacao.linhas.map((l) => (
+                      <tr key={l.mes}>
+                        <td className="py-2 font-sans">{l.mes}</td>
+                        <td className="py-2 text-right">{brl(l.total)}</td>
+                        <td className="py-2 text-right">{brl(l.atual)}</td>
+                        <td className="py-2 text-right font-semibold">{brl(l.sim)}</td>
+                        <td
+                          className={`py-2 text-right ${l.dif >= 0 ? "text-primary" : "text-destructive"}`}
+                        >
+                          {l.dif >= 0 ? "+" : "−"}
+                          {brl(Math.abs(l.dif))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card className="bg-card/60">
+
           <CardHeader>
             <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
               Lançamentos de {nomeMes(mesRef)}
