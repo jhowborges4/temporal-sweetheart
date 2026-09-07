@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type Venda = { id: string; data: string; valor: number };
-export type Config = { metas: number[]; comissao: number };
+export type Config = { metas: number[]; comissao: number; salarioBase: number };
+export type MudancaConfig = {
+  id: string;
+  quando: string;
+  metas: number[];
+  comissao: number;
+  salarioBase: number;
+  descricao: string;
+};
 
 const K_NOME = "cv:nome";
 const K_CONFIG = "cv:config";
 const K_VENDAS = "cv:vendas";
+const K_HISTORICO = "cv:config-historico";
 
 export const CONFIG_PADRAO: Config = {
   metas: [174000, 200000, 220000, 250000],
   comissao: 0.015,
+  salarioBase: 2200,
 };
 
 function ler<T>(key: string, fallback: T): T {
