@@ -281,6 +281,22 @@ function Painel() {
   }, [dadosMensais, comissaoPct, pctSimNum, primeiraMeta, salarioBaseCfg]);
 
 
+  // Previsão de quando a primeira meta será batida (ritmo dos dias úteis já passados)
+  const previsaoMeta = useMemo(() => {
+    if (!ehMesAtual || primeiraMeta <= 0) return null;
+    if (totalMes >= primeiraMeta) return { batida: true as const, data: null, possivel: true };
+    const media = uteisPassados > 0 ? totalMes / uteisPassados : 0;
+    if (media <= 0) return { batida: false as const, data: null, possivel: false };
+    const faltamDias = Math.ceil((primeiraMeta - totalMes) / media);
+    let restam = faltamDias;
+    const ultimo = new Date(ano, mes + 1, 0).getDate();
+    for (let d = hoje.getDate() + 1; d <= ultimo; d++) {
+      if (new Date(ano, mes, d).getDay() !== 0) restam--;
+      if (restam <= 0) return { batida: false as const, data: new Date(ano, mes, d), possivel: true };
+    }
+    return { batida: false as const, data: null, possivel: false };
+  }, [ehMesAtual, primeiraMeta, totalMes, uteisPassados, ano, mes]);
+
   function navegarMes(delta: number) {
     setMesRef(new Date(ano, mes + delta, 1));
   }
