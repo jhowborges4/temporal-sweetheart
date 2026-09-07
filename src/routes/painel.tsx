@@ -138,8 +138,10 @@ function Painel() {
   const metaSemana = metaDia * diasUteisDaSemana(hoje);
   const comissao = totalMes * comissaoPct;
   const primeiraMeta = metas[0] ?? 0;
+  const salarioBaseCfg = config.salarioBase || SALARIO_BASE;
   const metaMinimaAtingida = primeiraMeta > 0 && totalMes >= primeiraMeta;
-  const salarioAtual = metaMinimaAtingida ? comissao : SALARIO_BASE;
+  const salarioAtual = metaMinimaAtingida ? comissao : salarioBaseCfg;
+  const poucasVendas = doMes.length === 0 || totalMes < primeiraMeta * 0.25;
 
   // Ritmo necessário: dias úteis restantes a partir de hoje (ou do mês todo, se futuro)
   const diasRestantes = useMemo(() => {
@@ -260,8 +262,8 @@ function Painel() {
       const atingiuMeta = primeiraMeta > 0 && m.total >= primeiraMeta;
       const comissaoAtual = m.total * comissaoPct;
       const comissaoSimulada = m.total * pctSimNum;
-      const atual = atingiuMeta ? comissaoAtual : SALARIO_BASE;
-      const sim = atingiuMeta ? comissaoSimulada : SALARIO_BASE;
+      const atual = atingiuMeta ? comissaoAtual : salarioBaseCfg;
+      const sim = atingiuMeta ? comissaoSimulada : salarioBaseCfg;
       return {
         mes: m.mes,
         total: m.total,
@@ -276,7 +278,7 @@ function Painel() {
     const totalAtual = linhas.reduce((s, l) => s + l.atual, 0);
     const totalSim = linhas.reduce((s, l) => s + l.sim, 0);
     return { linhas, totalAtual, totalSim, diferenca: totalSim - totalAtual };
-  }, [dadosMensais, comissaoPct, pctSimNum, primeiraMeta]);
+  }, [dadosMensais, comissaoPct, pctSimNum, primeiraMeta, salarioBaseCfg]);
 
 
   function navegarMes(delta: number) {
@@ -405,6 +407,9 @@ function Painel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => navigate({ to: "/configuracoes" })}>
+              Configurações
+            </Button>
             <Button variant="outline" size="sm" onClick={() => exportarCSV(montarResumo())}>
               CSV
             </Button>
@@ -670,7 +675,11 @@ function Painel() {
                           toast.error("Preencha metas e comissão válidas.");
                           return;
                         }
-                        setConfig({ metas: novasMetas.sort((a, b) => a - b), comissao: pct });
+                        setConfig({
+                          metas: novasMetas.sort((a, b) => a - b),
+                          comissao: pct,
+                          salarioBase: salarioBaseCfg,
+                        });
                         setRascunho(null);
                         toast.success("Metas e comissão atualizadas!");
                       }}
