@@ -138,8 +138,10 @@ function Painel() {
   const metaSemana = metaDia * diasUteisDaSemana(hoje);
   const comissao = totalMes * comissaoPct;
   const primeiraMeta = metas[0] ?? 0;
+  const salarioBaseCfg = config.salarioBase || SALARIO_BASE;
   const metaMinimaAtingida = primeiraMeta > 0 && totalMes >= primeiraMeta;
-  const salarioAtual = metaMinimaAtingida ? comissao : SALARIO_BASE;
+  const salarioAtual = metaMinimaAtingida ? comissao : salarioBaseCfg;
+  const poucasVendas = doMes.length === 0 || totalMes < primeiraMeta * 0.25;
 
   // Ritmo necessário: dias úteis restantes a partir de hoje (ou do mês todo, se futuro)
   const diasRestantes = useMemo(() => {
@@ -260,8 +262,8 @@ function Painel() {
       const atingiuMeta = primeiraMeta > 0 && m.total >= primeiraMeta;
       const comissaoAtual = m.total * comissaoPct;
       const comissaoSimulada = m.total * pctSimNum;
-      const atual = atingiuMeta ? comissaoAtual : SALARIO_BASE;
-      const sim = atingiuMeta ? comissaoSimulada : SALARIO_BASE;
+      const atual = atingiuMeta ? comissaoAtual : salarioBaseCfg;
+      const sim = atingiuMeta ? comissaoSimulada : salarioBaseCfg;
       return {
         mes: m.mes,
         total: m.total,
@@ -276,8 +278,24 @@ function Painel() {
     const totalAtual = linhas.reduce((s, l) => s + l.atual, 0);
     const totalSim = linhas.reduce((s, l) => s + l.sim, 0);
     return { linhas, totalAtual, totalSim, diferenca: totalSim - totalAtual };
-  }, [dadosMensais, comissaoPct, pctSimNum, primeiraMeta]);
+  }, [dadosMensais, comissaoPct, pctSimNum, primeiraMeta, salarioBaseCfg]);
 
+
+  // Previsão de quando a primeira meta será batida (ritmo dos dias úteis já passados)
+  const previsaoMeta = useMemo(() => {
+    if (!ehMesAtual || primeiraMeta <= 0) return null;
+    if (totalMes >= primeiraMeta) return { batida: true as const, data: null, possivel: true };
+    const media = uteisPassados > 0 ? totalMes / uteisPassados : 0;
+    if (media <= 0) return { batida: false as const, data: null, possivel: false };
+    const faltamDias = Math.ceil((primeiraMeta - totalMes) / media);
+    let restam = faltamDias;
+    const ultimo = new Date(ano, mes + 1, 0).getDate();
+    for (let d = hoje.getDate() + 1; d <= ultimo; d++) {
+      if (new Date(ano, mes, d).getDay() !== 0) restam--;
+      if (restam <= 0) return { batida: false as const, data: new Date(ano, mes, d), possivel: true };
+    }
+    return { batida: false as const, data: null, possivel: false };
+  }, [ehMesAtual, primeiraMeta, totalMes, uteisPassados, ano, mes]);
 
   function navegarMes(delta: number) {
     setMesRef(new Date(ano, mes + delta, 1));
@@ -350,12 +368,17 @@ function Painel() {
       try {
         const dados = JSON.parse(String(leitor.result)) as {
           nome?: string;
-          config?: { metas: number[]; comissao: number };
+          config?: { metas: number[]; comissao: number; salarioBase?: number };
           vendas?: Venda[];
         };
         if (!Array.isArray(dados.vendas)) throw new Error("inválido");
         setVendas(dados.vendas);
-        if (dados.config?.metas?.length) setConfig(dados.config);
+        if (dados.config?.metas?.length)
+          setConfig({
+            metas: dados.config.metas,
+            comissao: dados.config.comissao,
+            salarioBase: dados.config.salarioBase ?? salarioBaseCfg,
+          });
         toast.success("Backup restaurado!");
       } catch {
         toast.error("Arquivo de backup inválido.");
@@ -405,6 +428,9 @@ function Painel() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => navigate({ to: "/configuracoes" })}>
+              Configurações
+            </Button>
             <Button variant="outline" size="sm" onClick={() => exportarCSV(montarResumo())}>
               CSV
             </Button>
@@ -567,6 +593,110 @@ function Painel() {
           </Card>
         </div>
 
+        {/* Como o salário foi calculado */}
+        <Card className="border-primary/30 bg-card/60">
+          <CardHeader>
+            <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
+              Como o salário deste mês é calculado
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  1 · Vendas do mês
+                </p>
+                <p className="font-mono text-lg font-bold">{brl(totalMes)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {doMes.length} {doMes.length === 1 ? "dia lançado" : "dias lançados"}
+                </p>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  2 · Bateu a meta?
+                </p>
+                <p className={`text-lg font-bold ${metaMinimaAtingida ? "text-emerald-400" : "text-red-400"}`}>
+                  {metaMinimaAtingida ? "Sim ✔" : "Ainda não"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  1ª meta: {brl(primeiraMeta)}
+                  {!metaMinimaAtingida && ` · faltam ${brl(Math.max(0, primeiraMeta - totalMes))}`}
+                </p>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  3 · Regra aplicada
+                </p>
+                <p className="text-lg font-bold">
+                  {metaMinimaAtingida
+                    ? `${(comissaoPct * 100).toFixed(2).replace(".", ",")}% das vendas`
+                    : "Salário-base"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {metaMinimaAtingida
+                    ? `${brl(totalMes)} × ${(comissaoPct * 100).toFixed(2).replace(".", ",")}%`
+                    : `Base fixa de ${brl(salarioBaseCfg)}`}
+                </p>
+              </div>
+              <div className="rounded-md border border-primary/40 bg-primary/10 p-3">
+                <p className="text-[10px] font-bold tracking-widest text-primary uppercase">
+                  4 · Salário do mês
+                </p>
+                <p className="font-mono text-lg font-bold text-primary">{brl(salarioAtual)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {metaMinimaAtingida ? "Percentual sobre as vendas" : "Salário-base priorizado"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progresso da 1ª meta + previsão */}
+            {primeiraMeta > 0 && (
+              <div className="space-y-2 border-t border-border pt-4">
+                <div className="flex flex-wrap justify-between gap-2 text-sm">
+                  <span className="font-semibold">
+                    Progresso da 1ª meta ({brl(primeiraMeta)})
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {Math.min(100, (totalMes / primeiraMeta) * 100).toFixed(1).replace(".", ",")}%
+                  </span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${Math.min(100, (totalMes / primeiraMeta) * 100)}%` }}
+                  />
+                </div>
+                {ehMesAtual && previsaoMeta && (
+                  <p className="text-xs text-muted-foreground">
+                    {previsaoMeta.batida
+                      ? "Meta batida: o salário já segue o percentual sobre as vendas."
+                      : previsaoMeta.data
+                        ? `No ritmo atual, a meta deve ser batida em ${previsaoMeta.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — a partir daí o salário passa a ser ${(comissaoPct * 100).toFixed(2).replace(".", ",")}% das vendas.`
+                        : `No ritmo atual a meta não deve ser batida neste mês — seria preciso vender ${brl(ritmoNecessario)} por dia útil nos ${diasRestantes} dias que restam.`}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Regra de mês fraco */}
+            {!metaMinimaAtingida && (
+              <div className="rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+                <p className="font-bold text-primary">
+                  Salário previsto: {brl(salarioBaseCfg)} (salário-base)
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {doMes.length === 0
+                    ? "Nenhuma venda lançada neste mês. Sem vendas registradas, não há comissão — o salário é o valor base."
+                    : poucasVendas
+                      ? `Poucas vendas neste mês (${brl(totalMes)} de ${brl(primeiraMeta)}). O percentual só passa a valer depois da 1ª meta batida, então vale o salário-base.`
+                      : `As vendas ainda estão abaixo da 1ª meta de ${brl(primeiraMeta)}. Até bater a meta, vale o salário-base.`}
+                  {" "}Se a meta fosse batida com o total atual, a comissão seria {brl(comissao)}.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Formulário + Metas */}
         <div className="grid grid-cols-12 gap-6">
           <Card className="col-span-12 bg-card/60 lg:col-span-4">
@@ -670,7 +800,11 @@ function Painel() {
                           toast.error("Preencha metas e comissão válidas.");
                           return;
                         }
-                        setConfig({ metas: novasMetas.sort((a, b) => a - b), comissao: pct });
+                        setConfig({
+                          metas: novasMetas.sort((a, b) => a - b),
+                          comissao: pct,
+                          salarioBase: salarioBaseCfg,
+                        });
                         setRascunho(null);
                         toast.success("Metas e comissão atualizadas!");
                       }}
