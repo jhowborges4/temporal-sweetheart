@@ -61,7 +61,16 @@ export function useNome() {
   return useLocalState<string>(K_NOME, "");
 }
 export function useConfig() {
-  return useLocalState<Config>(K_CONFIG, CONFIG_PADRAO);
+  const [valor, atualizar, pronto] = useLocalState<Config>(K_CONFIG, CONFIG_PADRAO);
+  const completo: Config = {
+    metas: valor.metas?.length ? valor.metas : CONFIG_PADRAO.metas,
+    comissao: valor.comissao ?? CONFIG_PADRAO.comissao,
+    salarioBase: valor.salarioBase ?? CONFIG_PADRAO.salarioBase,
+  };
+  return [completo, atualizar, pronto] as const;
+}
+export function useHistoricoConfig() {
+  return useLocalState<MudancaConfig[]>(K_HISTORICO, []);
 }
 export function useVendas() {
   return useLocalState<Venda[]>(K_VENDAS, []);
