@@ -62,6 +62,8 @@ export const Route = createFileRoute("/painel")({
 const nomeMes = (d: Date) =>
   d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
+const DIAS_ALERTA_META = 7;
+
 function Painel() {
   const navigate = useNavigate();
   const [nome, setNome, nomePronto] = useNome();
@@ -164,7 +166,8 @@ function Painel() {
       atingidasRef.current = atingidas;
       return;
     }
-    const novas = atingidas.filter((m) => !atingidasRef.current!.includes(m));
+    const anteriores = atingidasRef.current ?? [];
+    const novas = atingidas.filter((m) => !anteriores.includes(m));
     atingidasRef.current = atingidas;
     novas.forEach((m) => {
       const i = metas.indexOf(m) + 1;
@@ -284,18 +287,84 @@ function Painel() {
   // Previsão de quando a primeira meta será batida (ritmo dos dias úteis já passados)
   const previsaoMeta = useMemo(() => {
     if (!ehMesAtual || primeiraMeta <= 0) return null;
-    if (totalMes >= primeiraMeta) return { batida: true as const, data: null, possivel: true };
+    if (totalMes >= primeiraMeta)
+      return {
+        batida: true as const,
+        data: null,
+        possivel: true,
+        diasUteis: 0,
+        diasCorridos: 0,
+      };
     const media = uteisPassados > 0 ? totalMes / uteisPassados : 0;
-    if (media <= 0) return { batida: false as const, data: null, possivel: false };
+    if (media <= 0)
+      return {
+        batida: false as const,
+        data: null,
+        possivel: false,
+        diasUteis: null,
+        diasCorridos: null,
+      };
     const faltamDias = Math.ceil((primeiraMeta - totalMes) / media);
     let restam = faltamDias;
     const ultimo = new Date(ano, mes + 1, 0).getDate();
     for (let d = hoje.getDate() + 1; d <= ultimo; d++) {
       if (new Date(ano, mes, d).getDay() !== 0) restam--;
-      if (restam <= 0) return { batida: false as const, data: new Date(ano, mes, d), possivel: true };
+      if (restam <= 0) {
+        const prevista = new Date(ano, mes, d);
+        const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+        const diasCorridos = Math.round((prevista.getTime() - inicioHoje.getTime()) / 86_400_000);
+        return {
+          batida: false as const,
+          data: prevista,
+          possivel: true,
+          diasUteis: faltamDias,
+          diasCorridos,
+        };
+      }
     }
-    return { batida: false as const, data: null, possivel: false };
+    return {
+      batida: false as const,
+      data: null,
+      possivel: false,
+      diasUteis: faltamDias,
+      diasCorridos: null,
+    };
   }, [ehMesAtual, primeiraMeta, totalMes, uteisPassados, ano, mes]);
+
+  const alertaMetaProxima =
+    previsaoMeta?.batida === false &&
+    previsaoMeta.data !== null &&
+    previsaoMeta.diasCorridos !== null &&
+    previsaoMeta.diasCorridos <= DIAS_ALERTA_META;
+
+  const alertaPrevisaoRef = useRef("");
+  useEffect(() => {
+    if (!alertaMetaProxima || !previsaoMeta?.data) return;
+    const chave = iso(previsaoMeta.data);
+    if (alertaPrevisaoRef.current === chave) return;
+    alertaPrevisaoRef.current = chave;
+    const dias = previsaoMeta.diasCorridos ?? 0;
+    toast.warning(`Meta prevista para daqui a ${dias} ${dias === 1 ? "dia" : "dias"}`, {
+      description: `Em ${previsaoMeta.data.toLocaleDateString("pt-BR")}, o salário deve mudar de ${brl(salarioBaseCfg)} para ${(comissaoPct * 100).toFixed(2).replace(".", ",")}% das vendas.`,
+    });
+  }, [alertaMetaProxima, previsaoMeta, salarioBaseCfg, comissaoPct]);
+
+  const dadosProgressoMeta = useMemo(() => {
+    if (!ehMesAtual) return dadosDiarios.map((item) => ({ ...item, previsto: null }));
+    const media = uteisPassados > 0 ? totalMes / uteisPassados : 0;
+    let previsto = totalMes;
+    return dadosDiarios.map((item, indice) => {
+      const dia = indice + 1;
+      const dataDoPonto = new Date(ano, mes, dia);
+      const passou = dia <= hoje.getDate();
+      if (!passou && dataDoPonto.getDay() !== 0) previsto += media;
+      return {
+        ...item,
+        acumuladoAtual: passou ? item.acumulado : null,
+        previsto: dia >= hoje.getDate() ? Math.round(previsto) : null,
+      };
+    });
+  }, [ehMesAtual, dadosDiarios, uteisPassados, totalMes, ano, mes]);
 
   function navegarMes(delta: number) {
     setMesRef(new Date(ano, mes + delta, 1));
