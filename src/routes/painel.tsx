@@ -368,12 +368,17 @@ function Painel() {
       try {
         const dados = JSON.parse(String(leitor.result)) as {
           nome?: string;
-          config?: { metas: number[]; comissao: number };
+          config?: { metas: number[]; comissao: number; salarioBase?: number };
           vendas?: Venda[];
         };
         if (!Array.isArray(dados.vendas)) throw new Error("inválido");
         setVendas(dados.vendas);
-        if (dados.config?.metas?.length) setConfig(dados.config);
+        if (dados.config?.metas?.length)
+          setConfig({
+            metas: dados.config.metas,
+            comissao: dados.config.comissao,
+            salarioBase: dados.config.salarioBase ?? salarioBaseCfg,
+          });
         toast.success("Backup restaurado!");
       } catch {
         toast.error("Arquivo de backup inválido.");
