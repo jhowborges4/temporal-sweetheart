@@ -588,6 +588,110 @@ function Painel() {
           </Card>
         </div>
 
+        {/* Como o salário foi calculado */}
+        <Card className="border-primary/30 bg-card/60">
+          <CardHeader>
+            <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
+              Como o salário deste mês é calculado
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  1 · Vendas do mês
+                </p>
+                <p className="font-mono text-lg font-bold">{brl(totalMes)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {doMes.length} {doMes.length === 1 ? "dia lançado" : "dias lançados"}
+                </p>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  2 · Bateu a meta?
+                </p>
+                <p className={`text-lg font-bold ${metaMinimaAtingida ? "text-emerald-400" : "text-red-400"}`}>
+                  {metaMinimaAtingida ? "Sim ✔" : "Ainda não"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  1ª meta: {brl(primeiraMeta)}
+                  {!metaMinimaAtingida && ` · faltam ${brl(Math.max(0, primeiraMeta - totalMes))}`}
+                </p>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                  3 · Regra aplicada
+                </p>
+                <p className="text-lg font-bold">
+                  {metaMinimaAtingida
+                    ? `${(comissaoPct * 100).toFixed(2).replace(".", ",")}% das vendas`
+                    : "Salário-base"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {metaMinimaAtingida
+                    ? `${brl(totalMes)} × ${(comissaoPct * 100).toFixed(2).replace(".", ",")}%`
+                    : `Base fixa de ${brl(salarioBaseCfg)}`}
+                </p>
+              </div>
+              <div className="rounded-md border border-primary/40 bg-primary/10 p-3">
+                <p className="text-[10px] font-bold tracking-widest text-primary uppercase">
+                  4 · Salário do mês
+                </p>
+                <p className="font-mono text-lg font-bold text-primary">{brl(salarioAtual)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {metaMinimaAtingida ? "Percentual sobre as vendas" : "Salário-base priorizado"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progresso da 1ª meta + previsão */}
+            {primeiraMeta > 0 && (
+              <div className="space-y-2 border-t border-border pt-4">
+                <div className="flex flex-wrap justify-between gap-2 text-sm">
+                  <span className="font-semibold">
+                    Progresso da 1ª meta ({brl(primeiraMeta)})
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {Math.min(100, (totalMes / primeiraMeta) * 100).toFixed(1).replace(".", ",")}%
+                  </span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${Math.min(100, (totalMes / primeiraMeta) * 100)}%` }}
+                  />
+                </div>
+                {ehMesAtual && previsaoMeta && (
+                  <p className="text-xs text-muted-foreground">
+                    {previsaoMeta.batida
+                      ? "Meta batida: o salário já segue o percentual sobre as vendas."
+                      : previsaoMeta.data
+                        ? `No ritmo atual, a meta deve ser batida em ${previsaoMeta.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — a partir daí o salário passa a ser ${(comissaoPct * 100).toFixed(2).replace(".", ",")}% das vendas.`
+                        : `No ritmo atual a meta não deve ser batida neste mês — seria preciso vender ${brl(ritmoNecessario)} por dia útil nos ${diasRestantes} dias que restam.`}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Regra de mês fraco */}
+            {!metaMinimaAtingida && (
+              <div className="rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+                <p className="font-bold text-primary">
+                  Salário previsto: {brl(salarioBaseCfg)} (salário-base)
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {doMes.length === 0
+                    ? "Nenhuma venda lançada neste mês. Sem vendas registradas, não há comissão — o salário é o valor base."
+                    : poucasVendas
+                      ? `Poucas vendas neste mês (${brl(totalMes)} de ${brl(primeiraMeta)}). O percentual só passa a valer depois da 1ª meta batida, então vale o salário-base.`
+                      : `As vendas ainda estão abaixo da 1ª meta de ${brl(primeiraMeta)}. Até bater a meta, vale o salário-base.`}
+                  {" "}Se a meta fosse batida com o total atual, a comissão seria {brl(comissao)}.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Formulário + Metas */}
         <div className="grid grid-cols-12 gap-6">
           <Card className="col-span-12 bg-card/60 lg:col-span-4">
