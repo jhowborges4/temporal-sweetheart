@@ -766,6 +766,116 @@ function Painel() {
           </CardContent>
         </Card>
 
+        {/* Progresso da meta e mudança do salário */}
+        {ehMesAtual && primeiraMeta > 0 && (
+          <Card className="border-primary/30 bg-card/60">
+            <CardHeader>
+              <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
+                Progresso até o salário por percentual
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {metaMinimaAtingida ? (
+                <div className="rounded-md border border-emerald-400/40 bg-emerald-400/10 p-3">
+                  <p className="font-bold text-emerald-400">Meta atingida — salário por percentual ativo</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    O salário já é calculado em {(comissaoPct * 100).toFixed(2).replace(".", ",")}%
+                    sobre as vendas do mês: {brl(salarioAtual)} até agora.
+                  </p>
+                </div>
+              ) : alertaMetaProxima && previsaoMeta?.data ? (
+                <div className="rounded-md border border-primary/50 bg-primary/10 p-3" role="alert">
+                  <p className="font-bold text-primary">
+                    Atenção: meta prevista para daqui a {previsaoMeta.diasCorridos}{" "}
+                    {previsaoMeta.diasCorridos === 1 ? "dia" : "dias"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mantendo o ritmo, em {previsaoMeta.data.toLocaleDateString("pt-BR")} o salário deixa
+                    de seguir a base de {brl(salarioBaseCfg)} e passa a ser calculado em{" "}
+                    {(comissaoPct * 100).toFixed(2).replace(".", ",")}% sobre as vendas.
+                  </p>
+                </div>
+              ) : previsaoMeta?.data ? (
+                <div className="rounded-md border border-border bg-secondary/40 p-3">
+                  <p className="font-semibold text-foreground">
+                    Meta estimada para {previsaoMeta.data.toLocaleDateString("pt-BR")}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Faltam cerca de {previsaoMeta.diasUteis} dias úteis no ritmo atual. O alerta será
+                    destacado quando a previsão estiver a até {DIAS_ALERTA_META} dias.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3" role="alert">
+                  <p className="font-bold text-destructive">Meta ainda sem previsão dentro deste mês</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    No ritmo atual, o salário permanece no valor-base de {brl(salarioBaseCfg)}. Para
+                    chegar à meta, são necessários {brl(ritmoNecessario)} por dia útil restante.
+                  </p>
+                </div>
+              )}
+
+              <div className="h-72" aria-label="Gráfico do progresso até a primeira meta">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dadosProgressoMeta}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="dia" fontSize={11} stroke="var(--muted-foreground)" />
+                    <YAxis
+                      fontSize={11}
+                      stroke="var(--muted-foreground)"
+                      tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => brl(v)}
+                      contentStyle={{
+                        background: "var(--popover)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        color: "var(--popover-foreground)",
+                      }}
+                    />
+                    <Legend />
+                    <ReferenceLine
+                      y={primeiraMeta}
+                      stroke="var(--chart-3)"
+                      strokeDasharray="5 5"
+                      label={{
+                        value: "1ª meta",
+                        fontSize: 10,
+                        position: "insideTopRight",
+                        fill: "var(--chart-3)",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="acumuladoAtual"
+                      name="Vendas acumuladas"
+                      stroke="var(--chart-1)"
+                      strokeWidth={3}
+                      dot={false}
+                      connectNulls={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="previsto"
+                      name="Estimativa"
+                      stroke="var(--chart-2)"
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={false}
+                      connectNulls
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A estimativa usa a média de vendas por dia útil já transcorrido e é atualizada a cada
+                lançamento, edição ou remoção.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Formulário + Metas */}
         <div className="grid grid-cols-12 gap-6">
           <Card className="col-span-12 bg-card/60 lg:col-span-4">
