@@ -84,6 +84,16 @@ function Painel() {
     ultimo: string;
   }>("cv:autobackup", { ativo: true, ultimo: "" });
 
+  const [escuro, setEscuro] = useLocalState<boolean>("cv:escuro", false);
+
+  useEffect(() => {
+    if (escuro) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [escuro]);
+
 
   useEffect(() => {
     if (nomePronto && !nome.trim()) navigate({ to: "/" });
@@ -512,6 +522,15 @@ function Painel() {
             <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}>
               Importar
             </Button>
+            <Button
+              variant={escuro ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEscuro(!escuro)}
+              title={escuro ? "Modo claro" : "Modo escuro"}
+            >
+              {escuro ? ("☀️") : ("🌙")}
+            </Button>
+
             <Button
               variant={autoBackup.ativo ? "default" : "outline"}
               size="sm"
