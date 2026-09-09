@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import confetti from "canvas-confetti";
 import {
   Bar,
   BarChart,
@@ -85,6 +86,7 @@ function Painel() {
   }>("cv:autobackup", { ativo: true, ultimo: "" });
 
   const [escuro, setEscuro] = useLocalState<boolean>("cv:escuro", true);
+  const confeteDisparado = useRef(false);
 
   useEffect(() => {
     if (escuro) {
@@ -94,6 +96,34 @@ function Painel() {
     }
   }, [escuro]);
 
+  // Confete quando a meta do dia é batida ao carregar a página
+  useEffect(() => {
+    if (!ehMesAtual || confeteDisparado.current) return;
+    if (totalHoje <= 0) return;
+    if (metaDia > 0 && totalHoje >= metaDia) {
+      confeteDisparado.current = true;
+      const duracao = 2500;
+      const end = Date.now() + duracao;
+      const colors = ["#c8a951", "#4a90d9", "#ffffff", "#1e3a5f"];
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.7 },
+          colors,
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.7 },
+          colors,
+        });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+    }
+  }, [ehMesAtual, totalHoje, metaDia]);
 
   useEffect(() => {
     if (nomePronto && !nome.trim()) navigate({ to: "/" });
