@@ -84,7 +84,7 @@ function Painel() {
     ultimo: string;
   }>("cv:autobackup", { ativo: true, ultimo: "" });
 
-  const [escuro, setEscuro] = useLocalState<boolean>("cv:escuro", false);
+  const [escuro, setEscuro] = useLocalState<boolean>("cv:escuro", true);
 
   useEffect(() => {
     if (escuro) {
