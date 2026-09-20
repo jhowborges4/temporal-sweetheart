@@ -1,126 +1,77 @@
-# Avaliação técnica: a "versão primor" do app de Vendas & Metas
+# Plano: a "versão primor" do app de Vendas & Metas
 
-Você pediu apenas uma **avaliação** (sem mexer no código agora), considerando os quatro pilares:
-arquitetura de código, UX/UI premium, funcionalidades novas e confiabilidade dos dados, com persistência
-**local por padrão + nuvem opcional**. Este documento descreve o estado atual, o que está maduro, as
-dívidas e como seria a versão ideal caso refizesse do zero.
-
----
-
-## 1. Estado atual (o que já existe e funciona)
-
-- **Entrada só por nome** (`src/routes/index.tsx`), sem login/senha.
-- **Painel monolítico** em `src/routes/painel.tsx` com **1.141 linhas** e ~45 KB — um único componente
-  concentra registro/edição/remoção de vendas, navegação de mês, KPIs, comparação mês-a-mês, ritmo
-  necessário, calendário de vendas, metas/comissão editáveis, simulador de percentual, regra salarial
-  (base R$ 2.200 vs. comissão após a 1ª meta), alertas, gráficos (recharts), backup/import JSON,
-  backup automático diário e exportação PDF/CSV.
-- **Persistência localStorage** (`src/lib/store.ts`): nome, config e vendas, com hook `useLocalState`.
-- **Regras de negócio** (`src/lib/metas.ts`): metas `[174.000, 200.000, 220.000, 250.000]`, comissão
-  `1,5%`, salário-base `2.200`, dias úteis segunda–sábado, formatação R$.
-- **Exportação** (`src/lib/exportar.ts`): CSV e PDF via jspdf/jspdf-autotable.
-- **Tema** "escuro industrial" (slate-950 + amber-500) em `src/styles.css`.
-- **Biblioteca de UI** completa (shadcn/Radix) já instalada, mas pouco aproveitada no painel.
-
-### O que está maduro / vale preservar numa refatoração
-- Regra de negócio bem definida e estável (metas, comissão, salário, dias úteis).
-- Decisão de UX: entrar só com o nome é simples e acerta o público.
-- Tema visual já escolhido e consistente (não clareia).
-- Persistência desacoplada por hooks (`useVendas`, `useConfig`, `useNome`) — bom ponto de extensão.
-
-### Dívidas técnicas e riscos atuais
-- `painel.tsx` com 1.141 linhas: estado, cálculo e UI misturados; difícil testar e manter.
-- Toda a lógica de cálculo (total do mês, semana, projeção, salário, simulação) mora dentro do
-  componente, sem funções puras reutilizáveis nem testes.
-- `localStorage` é frágil: perda ao limpar cache, sem versionamento de schema, sem migração, sem
-  proteção contra dados corrompidos, e sem conflito entre dispositivos.
-- Backup automático depende do navegador baixar um arquivo; não é "restauração real" nem segura dados.
-- `date-fns` está instalado mas o código recria cálculos de semana/mês à mão (risco de inconsistência).
-- Exportações não refletem a regra salarial nova (base vs. comissão).
-- Sem testes automatizados e sem verificação de acessibilidade.
+Reconstruir o app atual com a qualidade ideal, em fases, **sem perder nenhuma funcionalidade**
+existente e mantendo as regras já definidas: pt-BR, moeda R$, entrada só por nome, tema escuro
+industrial (slate-950 + amber-500), metas padrão 174k/200k/220k/250k, comissão 1,5%,
+salário-base R$ 2.200, dias úteis segunda–sábado.
 
 ---
 
-## 2. A versão "primor" — visão por pilar
+## Fase 1 — Fundação: lógica de negócio pura e testada
 
-### Pilar A — Arquitetura de código
-- **Camada de domínio pura** em `src/lib/domain/`: funções puras tipadas e testáveis para
-  `resumoMensal`, `resumoSemanal`, `salario`, `simulacao`, `ritmoNecessario`, `progressoMeta`.
-  Sem React, sem localStorage — fáceis de testar com Vitest.
-- **Hook por feature**, pequenos: `useVendasDoMes(mesRef)`, `useKpis()`, `useSimulador()`,
-  `useConfigMetas()`, cada um em arquivo próprio, substituindo o estado espalhado.
-- **Quebrar o painel em componentes** de tela: `HeaderPainel`, `RegistroVenda`,
-  `CartaoKpi`, `CartaoMeta`, `CartaoSalario`, `GraficoEvolucao`, `CalendarioVendas`,
-  `SimuladorComissao`, `DialogConfigMetas`, `DialogBackup`. O `painel.tsx` vira orquestração.
-- **Tipagem forte** do modelo de dados (`Venda`, `Config`, `Resumo`, `Simulacao`) com Zod para
-  validar dados lidos de localStorage/import (rejeitar JSON inválido com mensagem clara).
-- **Camada de persistência abstraída** (`src/lib/storage/`): uma interface `Repository` com duas
-  implementações — `LocalRepository` (localStorage hoje) e `CloudRepository` (nuvem opcional).
-  O resto do app não sabe onde os dados vivem.
+Hoje todos os cálculos vivem dentro do componente do painel. Vou extraí-los:
 
-### Pilar B — UX/UI premium
-- **Layout responsivo de verdade**: o app é usado no celular (viewport 390px hoje). Reorganizar para
-  mobile-first com seções em tabs (`Hoje`, `Mês`, `Evolução`, `Config`), removendo a rolagem infinita
-  de cards empilhados.
-- **Navegação por abas/bottom-nav** em vez de um card gigante, com `Tabs`/`Sheet` já disponíveis.
-- **Microinterações**: animar entrada de novos registros, contador animado do total do mês,
-  feedback de meta atingida (confete/toast), estados vazios ilustrados.
-- **Consistência visual**: padronizar espaçamentos e uso dos tokens do tema (já dark), eliminar
-  duplicação de estilos.
-- **Acessibilidade**: labels associados, foco visível, contraste, navegação por teclado nos diálogos,
-  `aria-live` para alertas de meta e recálculo de comissão.
-- **Confirmações com desfazer** (toast "removido — desfazer") já parcialmente existe; padronizar.
+- Criar `src/lib/domain/` com funções puras e tipadas: `resumoMensal`, `resumoSemanal`,
+  `salarioDoMes` (regra base vs. comissão após a 1ª meta), `simulacaoComissao`,
+  `ritmoNecessario`, `progressoMeta`, `estimativaDataMeta`.
+- Usar `date-fns` (já instalado) para cálculos de semana/mês, eliminando código manual de datas.
+- Testes automatizados com Vitest cobrindo as regras salariais e de metas (incluindo casos de
+  mês sem vendas, exatamente na meta, acima da meta).
 
-### Pilar C — Funcionalidades novas
-- **Nuvem opcional** (sincronização entre dispositivos): manter entrada por nome, mas com um
-  "perfil" + código de acesso leve opcional para sincronizar; dados seguem locais por padrão.
-- **Categorias de venda** (ex.: cimento, acabamento, ferragens) para entender o mix que gera a meta.
-- **Metas por período** (dia/semana/mês) já existem como derivadas; permitir configurar alvos
-  personalizados por semana e feriados.
-- **Notificações/lembretes** diários de registro e alerta ao se aproximar de uma meta (PWA).
-- **PWA instalável** (manifest + service worker) para abrir como app no celular, com ícone próprio.
-- **Visão de ano/consolidado** e comparação entre vendedores (se multi-perfil) opcional.
+## Fase 2 — Quebrar o painel gigante
 
-### Pilar D — Confiabilidade dos dados
-- **Versionamento de schema** (`cv:version`) e migrações automáticas ao ler dados antigos.
-- **Validação Zod** ao ler/importar: JSON inválido nunca quebra o app — fallback e mensagem.
-- **Backup mais robusto**: opção de exportar/importar manual + backup automático local persistente
-  (e na nuvem, se habilitada), com histórico versionado e "restaurar para data X".
-- **Detecção de duplicidade** (mesma data) já há unique, mas padronizar edição por dia sem risco.
-- **Recuperação de desastre**: auto-save contínuo + ponto de restauração mensal.
-- **Validações de entrada**: valor não-negativo, data dentro de limites, comissão dentro de faixa.
+O `painel.tsx` tem 1.141 linhas misturando estado, cálculo e tela. Vou dividir em:
 
----
+- Hooks por recurso: `useVendasDoMes`, `useKpis`, `useSimulador`, `useConfigMetas`.
+- Componentes de tela: `HeaderPainel`, `RegistroVenda`, `CartaoKpi`, `CartaoMeta`,
+  `CartaoSalario` (com o resumo de cálculo do salário), `GraficoProgresso`, `GraficoEvolucao`,
+  `CalendarioVendas`, `SimuladorComissao`, `DialogBackup`.
+- O `painel.tsx` passa a ser só orquestração — mais fácil de manter e evoluir.
 
-## 3. Estrutura de pastas proposta (referência)
+## Fase 3 — Experiência de uso premium (mobile-first)
 
-```text
-src/
-  lib/
-    domain/        # funções puras de negócio (testáveis)
-    storage/       # interface Repository + Local/Cloud
-    metas.ts       # constantes e helpers de data (com date-fns)
-  hooks/           # useKpis, useSimulador, useVendasDoMes...
-  components/
-    painel/        # HeaderPainel, CartaoKpi, CartaoMeta, Simulador...
-  routes/
-    index.tsx      # entrada por nome
-    painel.tsx     # orquestração leve das seções
-```
+O app é usado no celular (390px). Hoje é uma rolagem longa de cartões empilhados:
+
+- Reorganizar em abas: **Hoje** (registro do dia + meta do dia), **Mês** (KPIs, progresso,
+  salário), **Evolução** (gráficos e comparações), **Ajustes** (atalho para configurações).
+- Microinterações: contador animado do total do mês, animação ao registrar venda, toast com
+  "desfazer" ao remover (já existe parcialmente — padronizar), feedback visual ao bater meta.
+- Acessibilidade: rótulos nos campos, foco visível, contraste, navegação por teclado,
+  avisos de meta anunciados para leitores de tela.
+- Manter o tema escuro industrial exatamente como está.
+
+## Fase 4 — Confiabilidade dos dados
+
+O localStorage hoje é frágil (limpar cache = perder tudo). Vou endurecer:
+
+- **Versionamento de dados**: marca de versão no armazenamento local, com migração automática
+  de dados antigos.
+- **Validação ao ler/importar** (Zod): arquivo de backup inválido nunca quebra o app — mostra
+  mensagem clara e mantém os dados atuais.
+- **Backup mais robusto**: manter exportação/importação manual e o backup automático diário,
+  e adicionar ponto de restauração mensal com histórico ("restaurar para data X").
+- Validações de entrada: valor não negativo, data coerente, comissão dentro de faixa.
+- Atualizar exportações PDF/CSV para refletir a regra salarial (base vs. comissão).
+
+## Fase 5 — Extras de produto (ao final, se aprovados)
+
+- **PWA instalável**: ícone próprio, abre como app no celular, funciona offline.
+- **Categorias de venda** (opcional; ex.: cimento, acabamento) para entender o mix — **só
+  implemento se você confirmar que quer**, pois muda a tela de registro.
+- Nuvem opcional para sincronizar entre dispositivos — **fica fora deste plano**; posso
+  planejar separadamente depois, mantendo os dados locais como padrão.
 
 ---
 
-## 4. Recomendação de caminho (sem mexer agora)
+## Detalhes técnicos
 
-Esta é apenas uma **avaliação** — nenhuma linha de código será alterada até você aprovar. Se quiser
-avançar, a ordem de maior retorno seria:
+- Estrutura final: `src/lib/domain/` (cálculos puros), `src/hooks/` (hooks por recurso),
+  `src/components/painel/` (componentes de tela), rotas `index`, `painel`, `configuracoes`.
+- Nenhum dado existente será perdido: a migração de versão preserva vendas, config e histórico.
+- Cada fase será entregue funcionando; o app nunca fica quebrado entre fases.
+- Testes: `bunx vitest run` para o domínio; verificação de tipos e build a cada fase.
 
-1. Extrair a lógica de cálculo para funções puras + primeiros testes (maior ganho de confiança).
-2. Quebrar `painel.tsx` em componentes e hooks por feature.
-3. Mobile-first com tabs e acessibilidade.
-4. Versionamento/validação de dados + backup robusto.
-5. Nuvem opcional e PWA.
+## Ordem de entrega
 
-> Observação: o erro `src/lib/utils.ts(8,7): Type 'number' is not assignable to type 'string'`
-> continua **ausente** do arquivo atual (`utils.ts` tem só o helper `cn` com 6 linhas); trata-se de
-> cache de editor/TS obsoleto.
+1. Fase 1 (domínio + testes) → 2. Fase 2 (componentização) → 3. Fase 3 (abas mobile + polish)
+→ 4. Fase 4 (dados confiáveis) → 5. Fase 5 (PWA; categorias somente se você aprovar).
