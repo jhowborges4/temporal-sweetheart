@@ -936,49 +936,9 @@ function Painel() {
           </Card>
         )}
 
-        {/* Formulário + Metas */}
+        {/* Metas */}
         <div className="grid grid-cols-12 gap-6">
-          <Card className="col-span-12 bg-card/60 lg:col-span-4">
-            <CardHeader>
-              <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
-                Lançar venda
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-4" onSubmit={salvarVenda}>
-                <div className="space-y-2">
-                  <Label htmlFor="data" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                    Data
-                  </Label>
-                  <Input
-                    id="data"
-                    type="date"
-                    value={data}
-                    onChange={(e) => setData(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="valor" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                    Total vendido (R$)
-                  </Label>
-                  <Input
-                    id="valor"
-                    inputMode="decimal"
-                    placeholder="Ex: 4500,00"
-                    className="font-mono"
-                    value={valor}
-                    onChange={(e) => setValor(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full font-bold tracking-widest uppercase">
-                  Registrar venda
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-12 bg-card/60 lg:col-span-8">
+          <Card className="col-span-12 bg-card/60">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
                 Metas do mês
