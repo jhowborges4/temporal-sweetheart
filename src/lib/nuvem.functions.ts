@@ -56,10 +56,10 @@ export const sincronizar = createServerFn({ method: "POST" })
     if (upserts.length) await db.from("vendas_nome").upsert(upserts, { onConflict: "perfil_id,data" });
 
     let config = perfil.config as z.infer<typeof configZ> | null;
-    let historico = (perfil.historico as unknown[]) ?? [];
+    let historico = (perfil.historico as Record<string, string | number | number[]>[]) ?? [];
     const patch: Record<string, unknown> = {};
     if (!config && data.config) { config = data.config; patch["config"] = config; }
-    if (historico.length === 0 && data.historico.length) { historico = data.historico; patch["historico"] = historico; }
+    if (historico.length === 0 && data.historico.length) { historico = data.historico as typeof historico; patch["historico"] = historico; }
     if (Object.keys(patch).length) await db.from("perfis").update(patch as any).eq("id", perfil.id);
 
     return { vendas: [...mapa.values()], config, historico };
