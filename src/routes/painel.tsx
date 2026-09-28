@@ -596,41 +596,60 @@ function Painel() {
 
         {/* Lançar venda */}
         <Card className="border-primary/40 bg-card/60">
-          <CardHeader>
+          <CardHeader className="pb-2 sm:pb-6">
             <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
               Lançar venda
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSubmit={salvarVenda}>
-              <div className="space-y-2">
-                <Label htmlFor="data" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Data
+            <form
+              className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end sm:gap-4"
+              onSubmit={salvarVenda}
+            >
+              {/* Valor — campo principal, em destaque no celular */}
+              <div className="order-1 space-y-2 sm:order-none sm:col-start-2">
+                <Label
+                  htmlFor="valor"
+                  className="text-[10px] font-bold tracking-wider text-primary uppercase"
+                >
+                  Total vendido
                 </Label>
-                <Input
-                  id="data"
-                  type="date"
-                  value={data}
-                  onChange={(e) => setData(e.target.value)}
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-lg font-bold text-primary">
+                    R$
+                  </span>
+                  <Input
+                    id="valor"
+                    type="text"
+                    inputMode="decimal"
+                    enterKeyHint="done"
+                    autoFocus
+                    placeholder="0,00"
+                    className="h-14 border-primary/40 pl-12 font-mono text-xl font-bold focus-visible:ring-primary sm:h-10 sm:text-base sm:font-normal"
+                    value={valor}
+                    onChange={(e) => setValor(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="valor" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Total vendido (R$)
-                </Label>
-                <Input
-                  id="valor"
-                  inputMode="decimal"
-                  placeholder="Ex: 4500,00"
-                  className="font-mono"
-                  value={valor}
-                  onChange={(e) => setValor(e.target.value)}
-                  required
-                />
+              {/* Data + botão lado a lado no celular */}
+              <div className="order-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 sm:order-none sm:contents sm:gap-4">
+                <div className="space-y-2 sm:col-start-1">
+                  <Label
+                    htmlFor="data"
+                    className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
+                  >
+                    Data
+                  </Label>
+                  <Input id="data" type="date" className="h-14 sm:h-10" value={data} onChange={(e) => setData(e.target.value)} />
+                </div>
+                <Button
+                  type="submit"
+                  className="h-14 w-full bg-primary font-bold tracking-widest text-primary-foreground uppercase sm:col-start-3 sm:h-10 sm:w-auto"
+                >
+                  Registrar venda
+                </Button>
               </div>
-              <Button type="submit" className="w-full font-bold tracking-widest uppercase sm:w-auto">
-                Registrar venda
-              </Button>
             </form>
           </CardContent>
         </Card>
