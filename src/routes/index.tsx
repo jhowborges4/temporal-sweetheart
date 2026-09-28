@@ -49,6 +49,13 @@ function Entrada() {
               e.preventDefault();
               const v = texto.trim() || nome.trim();
               if (!v) return;
+              // Trocou de nome: limpa só o cache deste aparelho (os dados do nome
+              // anterior continuam salvos na nuvem) para não misturar registros.
+              if (nome.trim() && nome.trim().toLowerCase() !== v.toLowerCase()) {
+                ["cv:vendas", "cv:config", "cv:config-historico"].forEach((k) =>
+                  window.localStorage.removeItem(k),
+                );
+              }
               setNome(v);
               navigate({ to: "/painel" });
             }}

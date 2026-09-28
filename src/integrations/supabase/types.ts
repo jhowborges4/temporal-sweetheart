@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      perfis: {
+        Row: {
+          config: Json | null
+          created_at: string
+          historico: Json
+          id: string
+          nome_exibicao: string
+          nome_normalizado: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          historico?: Json
+          id?: string
+          nome_exibicao: string
+          nome_normalizado: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          historico?: Json
+          id?: string
+          nome_exibicao?: string
+          nome_normalizado?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vendas_diarias: {
         Row: {
           created_at: string
@@ -40,6 +70,41 @@ export type Database = {
           valor?: number
         }
         Relationships: []
+      }
+      vendas_nome: {
+        Row: {
+          created_at: string
+          data: string
+          id: string
+          perfil_id: string
+          valor: number
+          venda_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          id?: string
+          perfil_id: string
+          valor?: number
+          venda_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          id?: string
+          perfil_id?: string
+          valor?: number
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendas_nome_perfil_id_fkey"
+            columns: ["perfil_id"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
