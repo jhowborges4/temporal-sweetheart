@@ -594,6 +594,47 @@ function Painel() {
           )}
         </div>
 
+        {/* Lançar venda */}
+        <Card className="border-primary/40 bg-card/60">
+          <CardHeader>
+            <CardTitle className="border-l-2 border-primary pl-3 text-sm font-bold tracking-widest uppercase">
+              Lançar venda
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSubmit={salvarVenda}>
+              <div className="space-y-2">
+                <Label htmlFor="data" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Data
+                </Label>
+                <Input
+                  id="data"
+                  type="date"
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Total vendido (R$)
+                </Label>
+                <Input
+                  id="valor"
+                  inputMode="decimal"
+                  placeholder="Ex: 4500,00"
+                  className="font-mono"
+                  value={valor}
+                  onChange={(e) => setValor(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full font-bold tracking-widest uppercase sm:w-auto">
+                Registrar venda
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         {/* Indicadores */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {ehMesAtual ? (
